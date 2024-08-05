@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""" A module contains a function that """
+""" A module contains a function that measure the runtime """
 
 import asyncio
 import time
