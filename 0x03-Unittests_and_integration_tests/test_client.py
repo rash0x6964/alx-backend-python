@@ -3,7 +3,7 @@
 
 import unittest
 from parameterized import parameterized
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from client import GithubOrgClient
 
@@ -16,7 +16,7 @@ class TestGithubOrgClient(unittest.TestCase):
         ("abc", {'login': "abc"}),
     ])
     @patch("client.get_json",)
-    def test_org(self, org, res, mocked_fn) -> None:
+    def test_org(self, org, res, mocked_fn):
         """ Tests the org method """
 
         mocked_fn.return_value = MagicMock(return_value=res)
@@ -25,3 +25,18 @@ class TestGithubOrgClient(unittest.TestCase):
         mocked_fn.assert_called_once_with(
             "https://api.github.com/orgs/{}".format(org)
         )
+
+    def test_public_repos_url(self):
+        """ Tests the _public_repos_url property """
+
+        with patch(
+                "client.GithubOrgClient.org",
+                new_callable=PropertyMock,
+                ) as mock_org:
+            mock_org.return_value = {
+                'repos_url': "https://api.github.com/users/google/repos",
+            }
+            self.assertEqual(
+                GithubOrgClient("google")._public_repos_url,
+                "https://api.github.com/users/google/repos"
+            )
