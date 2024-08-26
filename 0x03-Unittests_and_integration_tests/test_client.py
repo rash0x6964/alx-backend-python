@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """ A module for testing the client module """
 
+from typing import Dict
 import unittest
-from parameterized import parameterized
-from unittest.mock import MagicMock, PropertyMock, patch
-
+from urllib.error import HTTPError
+from parameterized import parameterized, parameterized_class
+from unittest.mock import MagicMock, PropertyMock, patch, Mock
+from fixtures import TEST_PAYLOAD
 from client import GithubOrgClient
 
 
@@ -66,8 +68,59 @@ class TestGithubOrgClient(unittest.TestCase):
         ({'license': {'key': "my_license"}}, "my_license", True),
         ({'license': {'key': "other_license"}}, "my_license", False),
     ])
-    def test_has_license(self, repo, key, expected):
-        """Tests the `has_license` method."""
+    def test_has_license(self, repo: Dict, key: str, expected: bool) -> None:
+        """ Tests the has_license method """
+
         gh_org_client = GithubOrgClient("google")
         client_has_licence = gh_org_client.has_license(repo, key)
         self.assertEqual(client_has_licence, expected)
+
+@parameterized_class([
+    {
+        'org_payload': TEST_PAYLOAD[0][0],
+        'repos_payload': TEST_PAYLOAD[0][1],
+        'expected_repos': TEST_PAYLOAD[0][2],
+        'apache2_repos': TEST_PAYLOAD[0][3],
+    },
+])
+class TestIntegrationGithubOrgClient(unittest.TestCase):
+    """ Performs integration tests for the GithubOrgClient class """
+
+    @classmethod
+    def setUpClass(cls):
+        """ Sets up class fixtures before running tests """
+
+        route_payload = {
+            'https://api.github.com/orgs/google': cls.org_payload,
+            'https://api.github.com/orgs/google/repos': cls.repos_payload,
+        }
+
+        def get_payload(url):
+            if url in route_payload:
+                return Mock(**{'json.return_value': route_payload[url]})
+            return HTTPError
+
+        cls.get_patcher = patch("requests.get", side_effect=get_payload)
+        cls.get_patcher.start()
+
+    def test_public_repos(self):
+        """ Tests the public_repos method """
+
+        self.assertEqual(
+            GithubOrgClient("google").public_repos(),
+            self.expected_repos,
+        )
+
+    def test_public_repos_with_license(self):
+        """ Tests the public_repos method with a license """
+
+        self.assertEqual(
+            GithubOrgClient("google").public_repos(license="apache-2.0"),
+            self.apache2_repos,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        """ Removes the class fixtures after running all tests """
+
+        cls.get_patcher.stop()
