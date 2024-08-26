@@ -14,16 +14,19 @@ class TestGithubOrgClient(unittest.TestCase):
     """ Tests the GithubOrgClient class """
 
     @parameterized.expand([
-        ('google'),
-        ('abc')
+        ("google", {'login': "google"}),
+        ("abc", {'login': "abc"}),
     ])
-    @patch('client.get_json')
-    def test_org(self, org_name, mock):
-        """ Test that GithubOrgClient.org returns the correct value """
+    @patch("client.get_json",)
+    def test_org(self, org: str, res: dict, mocked_fn: Mock) -> None:
+        """ Tests the org method """
 
-        test_class = GithubOrgClient(org_name)
-        test_class.org()
-        mock.assert_called_once_with(f'https://api.github.com/orgs/{org_name}')
+        mocked_fn.return_value = MagicMock(return_value=res)
+        gh_org_client = GithubOrgClient(org)
+        self.assertEqual(gh_org_client.org(), res)
+        mocked_fn.assert_called_once_with(
+            "https://api.github.com/orgs/{}".format(org)
+        )
 
     def test_public_repos_url(self):
         """ Tests the _public_repos_url property """
